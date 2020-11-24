@@ -1,0 +1,36 @@
+#
+# Standard Maven .gitignore
+#
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+#
+# IntelliJ
+#
+*.iml
+.idea/*
+
+/*.env
+conf/*.env
+!conf/sample.env
+settings.json
+settings.db
+recordings/
+# Slash needs to be there so that we don't ignore the data package in src/
+/data
+
+*.bat
+!build-docker.bat
+!start.bat
+!src/assembly/settings.db
+.classpath
+.factorypath
+.project
+.settings/

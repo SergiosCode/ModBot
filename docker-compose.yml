@@ -1,0 +1,74 @@
+version: '3.4'
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 100m
+    max-file: '5'
+
+services:
+  bot:
+    image: gdragon/throw-voice:${VERSION}
+    depends_on:
+      - datastore
+    env_file:
+      - ${ENV:-sample}.env
+    environment:
+      - TZ=America/Los_Angeles
+      - JAVA_TOOL_OPTIONS=-Dlog4j.configurationFile=log4j2-prod.xml
+    volumes:
+      - ./data:/app/data
+    restart: on-failure:5
+    logging:
+      <<: *logging
+  portainer:
+    image: portainer/portainer:latest
+    command: -H unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    logging:
+      <<: *logging
+  data:
+    build:
+      context: .
+      dockerfile: Dockerfile.metabase
+    image: metabase/metabase:v0.32.5-custom
+    environment:
+      - TZ=America/Los_Angeles
+      - MB_DB_FILE=/tmp/metabase.db
+    volumes:
+      - ./data/metabase:/tmp
+      - ./data/settings.db:/opt/bot.db
+    logging:
+      <<: *logging
+  datastore:
+    image: minio/minio:RELEASE.RELEASE.2019-05-02T19-07-09Z
+    command: -c "MINIO_SECRET_KEY=$$DS_SECRET_KEY MINIO_ACCESS_KEY=$$DS_ACCESS_KEY minio gateway b2"
+    entrypoint: sh
+    env_file:
+      - ${ENV:-sample}.env
+    environment:
+      - TZ=America/Los_Angeles
+    logging:
+      <<: *logging
+  nginx:
+    image: nginx:1.15-alpine
+    command: /bin/sh -c "envsubst '$${BOT_HOST},$${DATA_HOST},$${DATA_WHITELIST_IP}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && exec nginx -g 'daemon off;'"
+    environment:
+      - BOT_HOST=${BOT_HOST:-localhost}
+      - DATA_HOST=${DATA_HOST:-localhost}
+      - DATA_WHITELIST_IP=${DATA_WHITELIST_IP:-127.0.0.1}
+    volumes:
+      - ${CONF:-./}nginx.conf:/etc/nginx/nginx.conf.template
+    ports:
+      - 80:80
+    depends_on:
+      - bot
+      - data
+      - portainer
+    logging:
+      <<: *logging
+
+volumes:
+  portainer_data:
